@@ -1,9 +1,10 @@
-package luv.zoey.runningapp
+package luv.zoey.runningapp.ui
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
+import luv.zoey.runningapp.R
 import luv.zoey.runningapp.db.RunDAO
 import javax.inject.Inject
 
