@@ -2,6 +2,7 @@ package luv.zoey.runningapp.ui.viewmodels
 
 import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.ViewModel
+import luv.zoey.runningapp.db.Run
 import luv.zoey.runningapp.repositories.MainRepository
 import javax.inject.Inject
 
