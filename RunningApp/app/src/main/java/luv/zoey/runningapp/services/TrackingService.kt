@@ -24,6 +24,10 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import luv.zoey.runningapp.R
 import luv.zoey.runningapp.other.Constants.ACTION_PAUSE_SERVICE
 import luv.zoey.runningapp.other.Constants.ACTION_SHOW_TRACKING_TRAGMENT
@@ -34,6 +38,7 @@ import luv.zoey.runningapp.other.Constants.LOCATION_UPDATE_INTERVAL
 import luv.zoey.runningapp.other.Constants.NOTIFICATION_CHANNEL_ID
 import luv.zoey.runningapp.other.Constants.NOTIFICATION_CHANNEL_NAME
 import luv.zoey.runningapp.other.Constants.NOTIFICATION_ID
+import luv.zoey.runningapp.other.Constants.TIMER_UPDATE_INTETVAL
 import luv.zoey.runningapp.other.TrackingUtility
 import luv.zoey.runningapp.ui.MainActivity
 import timber.log.Timber
@@ -47,7 +52,10 @@ class TrackingService : LifecycleService() {
 
     lateinit var fusedLocationProviderClient: FusedLocationProviderClient
 
+    private val timeRunInSeconds = MutableLiveData<Long>()
+
     companion object {
+        val timeRunInMillis = MutableLiveData<Long>()
         val isTracking = MutableLiveData<Boolean>()
         val pathPoints = MutableLiveData<Polylines>()
     }
@@ -55,6 +63,8 @@ class TrackingService : LifecycleService() {
     private fun postInitialValues() {
         isTracking.postValue(false)
         pathPoints.postValue(mutableListOf())
+        timeRunInSeconds.postValue(0L)
+        timeRunInMillis.postValue(0L)
     }
 
     override fun onCreate() {
@@ -78,7 +88,7 @@ class TrackingService : LifecycleService() {
                         isFirstRun = false
                     } else {
                         Timber.d("Resuming Service...")
-                        startForegroundService()
+                        startTimer()
                     }
 
                     Timber.d("Started or Resumed sercvie")
@@ -90,7 +100,7 @@ class TrackingService : LifecycleService() {
                 }
 
                 ACTION_STOP_SERVICE -> {
-                    Timber.d("SStopped service")
+                    Timber.d("Stopped service")
                 }
 
 
@@ -100,8 +110,36 @@ class TrackingService : LifecycleService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    private var isTimerEnabled = false
+    private var lapTime = 0L
+    private var timeRun = 0L
+    private var timeStarted = 0L
+    private var lastSecondTimeStamp = 0L
+
+    private fun startTimer() {
+        addEmptyPolyline()
+        isTracking.postValue(true)
+        timeStarted = System.currentTimeMillis()
+        isTimerEnabled = true
+        CoroutineScope(Dispatchers.Main).launch {
+            while(isTracking.value!!) {
+                // 지금 시간과 시작시간을 빼줌으로서 경과하고있는 시간을 구함
+                lapTime = System.currentTimeMillis() - timeStarted
+                // 경과시간을 라이브 데이타에 넣어줌
+                timeRunInMillis.postValue(timeRun + lapTime)
+                if(timeRunInMillis.value!! >= lastSecondTimeStamp + 1000L) {
+                    timeRunInSeconds.postValue(timeRunInSeconds.value!! +1)
+                    lastSecondTimeStamp += 1000L
+                }
+                delay(TIMER_UPDATE_INTETVAL)
+            }
+            timeRun += lapTime
+        }
+    }
+
     private fun pauseService() {
         isTracking.postValue(false)
+        isTimerEnabled = false
     }
 
     @SuppressLint("MissingPermission")
@@ -155,7 +193,8 @@ class TrackingService : LifecycleService() {
     } ?: pathPoints.postValue((mutableListOf(mutableListOf())))
 
     private fun startForegroundService() {
-        addEmptyPolyline()
+
+        startTimer()
         isTracking.postValue(true)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE)

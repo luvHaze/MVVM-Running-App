@@ -17,6 +17,7 @@ import luv.zoey.runningapp.other.Constants.ACTION_START_OR_RESUME_SERVICE
 import luv.zoey.runningapp.other.Constants.MAP_ZOOM
 import luv.zoey.runningapp.other.Constants.POLYLINE_COLOR
 import luv.zoey.runningapp.other.Constants.POLYLINE_WIDTH
+import luv.zoey.runningapp.other.TrackingUtility
 import luv.zoey.runningapp.services.Polyline
 import luv.zoey.runningapp.services.TrackingService
 import luv.zoey.runningapp.ui.viewmodels.MainViewModel
@@ -27,10 +28,11 @@ class TrackingFragment : Fragment(R.layout.fragment_tracking) {
     private val viewModel: MainViewModel by viewModels()
 
     private var map: GoogleMap? = null
-
     private var isTracking = false
 
     private var pathPoints = mutableListOf<Polyline>()
+
+    private var curTimeInMillis = 0L
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -56,6 +58,12 @@ class TrackingFragment : Fragment(R.layout.fragment_tracking) {
             pathPoints = it
             addLatestPolyline()
             moveCameraToUser()
+        })
+
+        TrackingService.timeRunInMillis.observe(viewLifecycleOwner, Observer {
+            curTimeInMillis = it
+            var formattedTime = TrackingUtility.getFormattedStopWatchTime(curTimeInMillis, true)
+            tvTimer.text = formattedTime
         })
 
     }
